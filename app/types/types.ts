@@ -10,7 +10,8 @@ export interface AccountDetailsDto {
   email: string;
   enabled: boolean;
   userDetails: UserDetailsDTO,
-  token: string
+  token?: string,
+  organisations?: OrganisationDTO[]
 }
 
 // types/api.ts
@@ -45,6 +46,7 @@ export type AccountAction =
   | { type: "FETCH_ERROR"; payload: string }
   | { type: "LOGOUT" }
   | { type: "APPEND_USER"; payload: UserDetailsDTO }
+  | { type: "SET_ORGANISATIONS"; payload: OrganisationDTO[] }
   | { type: "APPEND_JWT"; payload: string }
   | { type: "ADD_OUTGOING_URL"; outGoingUrl : string | null };
 
@@ -90,6 +92,13 @@ export interface UserCreateRequestDto
   firstName: string,
   lastName: string,
   phoneNumber: string
+}
+
+export interface OrganisationDTO {
+  id: number;
+  name: string;
+  role?: string;
+  createdAt?: string;
 }
 
 

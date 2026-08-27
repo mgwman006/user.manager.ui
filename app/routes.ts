@@ -1,29 +1,25 @@
-import Account from "./components/auth/Account";
-import Auth from "./components/auth/Auth";
-import LogIn from "./components/auth/LogIn";
-import Register from "./components/auth/Register";
-import UserProfile from "./components/auth/UserProfile";
+import Home from "./components/home/Home";
+// LogIn and Register handled by external auth-manager UI
+import UserProfile from "./components/user/UserProfile";
+import CreateOrganisation from "./components/organisation/CreateOrganisation";
+import OrganisationList from "./components/organisation/OrganisationList";
 
 const routes = [
   {
     path: "/",
-    Component: Auth,
+    Component: Home,
     children:[
       {
         path:"",
-        Component: Account
-      },
-      {
-        path:"login",
-        Component: LogIn
-      },
-      {
-        path:"register",
-        Component: Register
-      },
-      {
-        path:"user",
         Component: UserProfile
+      },
+      {
+        path:"organisations",
+        Component: OrganisationList
+      },
+      {
+        path:"organisation",
+        Component: CreateOrganisation
       }
     ]
   }

@@ -1,11 +1,11 @@
 {
-  "name": "tante-auth",
+  "name": "tante-user-manager-ui ",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite --host --port 4174",
-    "preview": "vite preview --host --port 4174",
+    "dev": "vite --host --port 4176",
+    "preview": "vite preview --host --port 4176",
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
