@@ -32,7 +32,9 @@ export default function OrganisationList() {
   }, [state?.accountDetails?.phoneNumber]);
 
   return (
-    <div style={{ padding: 24 }}>
+    <div 
+      // /style={{ padding: 24 }}
+    >
       {contextHolder}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2>Your Organisations</h2>

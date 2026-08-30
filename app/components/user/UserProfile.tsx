@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAccount } from "../../store/account/AccountContext";
 import { useEffect } from "react";
 import { AccountState } from "../../types/types";
+import OrganisationList from "../organisation/OrganisationList";
 
 const authUrl = import.meta.env.VITE_AUTH_URL?.trim();
 const rentManagerUrl = import.meta.env.VITE_RENT_MANAGER_URL?.trim();
@@ -35,6 +36,7 @@ function isTokenExpired(token?: string): boolean {
 export default function UserProfile() {
   const [searchParams] = useSearchParams();
   const accountStateString = searchParams.get("state");
+  console.log("Account state from URL ----->:", accountStateString);
   const [notificationApi, contextHolder] = notification.useNotification();
   const { state, dispatch } = useAccount();
   //const [memberships, setMemberships] = useState<MembershipDetailsDTO[]>([]);
@@ -82,12 +84,18 @@ export default function UserProfile() {
     }
 
     try {
+      console.log("Received account state from URL:", accountStateString);
       const receivedAccountState: AccountState = JSON.parse(accountStateString);
       const details = receivedAccountState.accountDetails;
       if (!details) {
         console.error("Account state payload is missing accountDetails");
         return;
       } 
+
+      console.log("--------------------------------------------------------");
+
+      console.log("Parsed account details:", details);
+      console.log("---------------------------------------------------------");
 
       if (isTokenExpired(details.token)) {
         notificationApi.error({
@@ -115,17 +123,13 @@ export default function UserProfile() {
   }, []);
 
   return (
-    <div style={{ height: "100vh" }}>
+    <div 
+      // style={{ height: "100vh" }}
+    >
       <Row justify={'center'} align={'middle'} style={{ height: "100%" }}>
-        <Col xs={20} sm={20} md={6} lg={6} xl={6} xxl={6}>
-          <div style={{ textAlign: 'center' }}>
-            <h1>Profile</h1>
-            {/* <p><strong>Name:</strong> {user.firstName} {user.lastName}</p> */}
-            <p><strong>Phone:</strong> {state?.accountDetails?.phoneNumber}</p>
-            <div style={{ marginTop: 24 }}>
-              <Button type="primary" onClick={() => navigate('/organisations')}>View Organisations</Button>
-            </div>
-          </div>
+        <Col xs={20} sm={20} md={12} lg={12} xl={12} xxl={12}>
+            <h1>Welcome, {state.accountDetails?.userDetails?.firstName} {state.accountDetails?.userDetails?.lastName}!</h1>
+            <OrganisationList />
         </Col>
       </Row>
     </div>
