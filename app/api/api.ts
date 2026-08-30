@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AccountAction, AccountAuthRequestDTO, AccountAuthResponseDTO, AccountCreateDto, AccountDetailsDto, ApiError, ApiResponse, UserCreateRequestDto, UserDetailsDTO, OrganisationDTO } from '../types/types';
+import { AccountAction, AccountAuthRequestDTO, AccountAuthResponseDTO, AccountCreateDto, AccountDetailsDto, ApiError, ApiResponse, UserCreateRequestDto, UserDetailsDTO, OrganisationDTO, MembershipDetailsDTO } from '../types/types';
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -81,6 +81,24 @@ export const organisationsApi = {
     const headers: Record<string,string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await apiClient.get<ApiResponse<OrganisationDTO[]>>(url, { headers });
+    return handleResponse(res.data);
+  },
+  create: async (payload: any, token?: string): Promise<OrganisationDTO> => {
+    const headers: Record<string,string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await apiClient.post<ApiResponse<OrganisationDTO>>(`/organisations`, payload, { headers });
+    return handleResponse(res.data);
+  }
+};
+
+export const membershipApi = {
+  getAllMembershipsByUserId: async (userId: number, token?: string) => {
+    const res = await apiClient.get<ApiResponse<MembershipDetailsDTO[]>>(`/users/${userId}/memberships`, 
+      { 
+        headers : { 
+          'Authorization': `Bearer ${token}` 
+        }
+      });
     return handleResponse(res.data);
   }
 };

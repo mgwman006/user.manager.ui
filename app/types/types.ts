@@ -83,8 +83,9 @@ export interface MembershipDetailsDTO
 {
   id:number;
   userId:number,
-  rentalProfileId:number,
-  businessRoles:string[]
+  organizationId:number,
+  organizationName:string,
+  membershipRole:string
 }
 
 export interface UserCreateRequestDto

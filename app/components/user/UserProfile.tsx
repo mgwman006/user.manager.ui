@@ -1,9 +1,11 @@
 import { Button, Col, Form, notification, Row } from "antd";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAccount } from "../../store/account/AccountContext";
-import { useEffect } from "react";
-import { AccountState } from "../../types/types";
+import { useEffect, useState } from "react";
+import { AccountState, MembershipDetailsDTO } from "../../types/types";
 import OrganisationList from "../organisation/OrganisationList";
+import { membershipApi } from "../../api/api";
+import { handleApiError } from "../../utilities/error-handler";
 
 const authUrl = import.meta.env.VITE_AUTH_URL?.trim();
 const rentManagerUrl = import.meta.env.VITE_RENT_MANAGER_URL?.trim();
@@ -36,30 +38,10 @@ function isTokenExpired(token?: string): boolean {
 export default function UserProfile() {
   const [searchParams] = useSearchParams();
   const accountStateString = searchParams.get("state");
-  console.log("Account state from URL ----->:", accountStateString);
   const [notificationApi, contextHolder] = notification.useNotification();
   const { state, dispatch } = useAccount();
-  //const [memberships, setMemberships] = useState<MembershipDetailsDTO[]>([]);
-  const [form] = Form.useForm();
   const navigate = useNavigate();
 
-
-  //  const getMembershipStatus = async (phoneNumber: string, token?: string) => {
-  //   try 
-  //   {
-  //     if (!token) {
-  //       console.warn("No token available for membership request, skipping call.");
-  //       return;
-  //     }
-  //     const response : MembershipDetailsDTO[] = await membershipApi.getAllMembershipsByPhoneNumber(phoneNumber, token);
-  //     setMemberships(response);
-  //     console.log("Memberships:", response);
-  //   } 
-  //   catch (error:any) 
-  //   {
-  //       handleApiError(error,notificationApi);
-  //   }
-  // }
 
   const navigateToAuth = (nextApp: string = "rent-manager", phone?: string) => {
     if (!authUrl) {
@@ -109,15 +91,9 @@ export default function UserProfile() {
       if (!state.accountDetails || state.accountDetails.token !== details.token) {
         dispatch({ type: "FETCH_SUCCESS", payload: details });
       }
-
-      // getMembershipStatus(
-      //   details.userDetails?.phoneNumber as string,
-      //   details.token
-      // );
-      // form.setFieldsValue({
-      //   phoneNumber: details.userDetails?.phoneNumber,
-      // });
-    } catch (error) {
+      
+    } catch (error) 
+    {
       console.error("Failed to parse account state from URL", error);
     }
   }, []);
@@ -126,10 +102,11 @@ export default function UserProfile() {
     <div 
       // style={{ height: "100vh" }}
     >
+      {contextHolder}
       <Row justify={'center'} align={'middle'} style={{ height: "100%" }}>
         <Col xs={20} sm={20} md={12} lg={12} xl={12} xxl={12}>
             <h1>Welcome, {state.accountDetails?.userDetails?.firstName} {state.accountDetails?.userDetails?.lastName}!</h1>
-            <OrganisationList />
+            {OrganisationList(state.accountDetails?.userDetails?.memberships || [])}
         </Col>
       </Row>
     </div>
