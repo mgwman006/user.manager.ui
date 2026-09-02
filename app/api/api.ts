@@ -83,17 +83,17 @@ export const organisationsApi = {
     const res = await apiClient.get<ApiResponse<OrganisationDTO[]>>(url, { headers });
     return handleResponse(res.data);
   },
-  create: async (payload: any, token?: string): Promise<OrganisationDTO> => {
+  create: async (ownerId:number, payload: any, token?: string): Promise<OrganisationDTO> => {
     const headers: Record<string,string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await apiClient.post<ApiResponse<OrganisationDTO>>(`/organisations`, payload, { headers });
+    const res = await apiClient.post<ApiResponse<OrganisationDTO>>(`/organisations/${ownerId}`, payload, { headers });
     return handleResponse(res.data);
   }
 };
 
 export const membershipApi = {
-  getAllMembershipsByUserId: async (userId: number, token?: string) => {
-    const res = await apiClient.get<ApiResponse<MembershipDetailsDTO[]>>(`/users/${userId}/memberships`, 
+  getByUserId: async (userId: number, token?: string) => {
+    const res = await apiClient.get<ApiResponse<MembershipDetailsDTO[]>>(`/memberships/${userId}`, 
       { 
         headers : { 
           'Authorization': `Bearer ${token}` 

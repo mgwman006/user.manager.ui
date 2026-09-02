@@ -36,11 +36,12 @@ function isTokenExpired(token?: string): boolean {
 }
 
 export default function UserProfile() {
+
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const accountStateString = searchParams.get("state");
   const [notificationApi, contextHolder] = notification.useNotification();
   const { state, dispatch } = useAccount();
-  const navigate = useNavigate();
 
 
   const navigateToAuth = (nextApp: string = "rent-manager", phone?: string) => {
@@ -74,21 +75,20 @@ export default function UserProfile() {
         return;
       } 
 
-      console.log("--------------------------------------------------------");
 
-      console.log("Parsed account details:", details);
-      console.log("---------------------------------------------------------");
-
-      if (isTokenExpired(details.token)) {
+      if (isTokenExpired(details.token)) 
+      {
         notificationApi.error({
           message: "Session expired",
           description: "Your sign-in session has expired. Please sign in again.",
         });
         dispatch({ type: "LOGOUT" });
+        navigateToAuth();
         return;
       }
 
-      if (!state.accountDetails || state.accountDetails.token !== details.token) {
+      if (!state.accountDetails || state.accountDetails.token !== details.token) 
+      {
         dispatch({ type: "FETCH_SUCCESS", payload: details });
       }
       
@@ -106,7 +106,7 @@ export default function UserProfile() {
       <Row justify={'center'} align={'middle'} style={{ height: "100%" }}>
         <Col xs={20} sm={20} md={12} lg={12} xl={12} xxl={12}>
             <h1>Welcome, {state.accountDetails?.userDetails?.firstName} {state.accountDetails?.userDetails?.lastName}!</h1>
-            {OrganisationList(state.accountDetails?.userDetails?.memberships || [])}
+            {OrganisationList(state.accountDetails?.userDetails?.memberships || [], notificationApi)}
         </Col>
       </Row>
     </div>

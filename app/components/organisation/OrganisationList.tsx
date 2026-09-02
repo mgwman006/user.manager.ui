@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { List, Button, Spin, notification, Modal, Form } from 'antd';
+import { List, Button, Spin, Modal, Form, Input, Select } from 'antd';
 import { RightOutlined } from '@ant-design/icons';
 import { useAccount } from '../../store/account/AccountContext';
-import { organisationsApi } from '../../api/api';
+import { organisationsApi, membershipApi } from '../../api/api';
 import { useNavigate } from 'react-router-dom';
 import { MembershipDetailsDTO, OrganisationDTO } from '../../types/types';
+import { NotificationInstance } from 'antd/es/notification/interface';
 
-export default function OrganisationList(memmbershipsData: MembershipDetailsDTO[]) {
+export default function OrganisationList(membershipsData: MembershipDetailsDTO[], notificationApi: NotificationInstance) {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   const { state } = useAccount();
+  const [memberships, setMemberships] = useState<MembershipDetailsDTO[]>(membershipsData);
 
 
   async function createOrganisation(values: any): Promise<void> {
@@ -28,19 +30,30 @@ export default function OrganisationList(memmbershipsData: MembershipDetailsDTO[
         },
       };
 
-      const response = await organisationsApi.create(payload, state.accountDetails?.token);
-
-
-      form.resetFields();
+      const response = await organisationsApi.create(state.accountDetails?.userDetails?.id ?? 0, payload, state.accountDetails?.token);
+      loadMemberships();
       setIsModalOpen(false);
-      navigate('/organisations');
     } catch (error: any) {
-      notification.error({
+      setIsModalOpen(false);
+      notificationApi.error({
         message: 'Unable to create organisation',
         description: error?.response?.data?.message || 'Please try again.',
       });
     }
   }
+
+  async function loadMemberships(): Promise<void> {
+    try {
+      const response = await membershipApi.getByUserId(state.accountDetails?.userDetails?.id ?? 0, state.accountDetails?.token);
+      setMemberships(response);
+    } catch (error: any) {
+      notificationApi.error({
+        message: 'Unable to load memberships',
+        description: error?.response?.data?.message || 'Please try again.',
+      });
+    }
+  }
+
 
   return (
     <div 
@@ -58,7 +71,7 @@ export default function OrganisationList(memmbershipsData: MembershipDetailsDTO[
      
         <List
           bordered
-          dataSource={memmbershipsData}
+          dataSource={memberships}
           renderItem={(item) => (
             <List.Item>
               <List.Item.Meta
@@ -89,8 +102,8 @@ export default function OrganisationList(memmbershipsData: MembershipDetailsDTO[
           form={form}
           layout="horizontal"
           size="large"
-          labelCol={{ span: 4 }}
-          wrapperCol={{ span: 14 }}
+          labelCol={{ span: 6 }}
+          wrapperCol={{ span: 18}}
         >
           <Form.Item
             style={{ width: '100%' }}
@@ -98,7 +111,7 @@ export default function OrganisationList(memmbershipsData: MembershipDetailsDTO[
             name="name"
             rules={[{ required: true, message: 'Please input the organisation name!' }]}
           >
-            <input width="100%" />
+            <Input width="100%" />
           </Form.Item>
 
           <Form.Item
@@ -106,7 +119,7 @@ export default function OrganisationList(memmbershipsData: MembershipDetailsDTO[
             name="businessEmail"
             rules={[{ required: true, message: 'Please input the business email!' }]}
           >
-            <input type="email" />
+            <Input type="email" />
           </Form.Item>
 
           <Form.Item
@@ -114,17 +127,18 @@ export default function OrganisationList(memmbershipsData: MembershipDetailsDTO[
             name="type"
             rules={[{ required: true, message: 'Please select the organisation type!' }]}
           >
-            <select>
-              <option value="">Select Type</option>
-              <option value="CONSTRUCTION_COMPANY">Construction Company</option>
-              <option value="PROPERTY_MANAGER">Property Manager</option>
-              <option value="REAL_ESTATE_AGENCY">Real Estate Agency</option>
-              <option value="SUPPLIER">Supplier</option>
-              <option value="CONTRACTOR">Contractor</option>
-              <option value="CONSULTANT">Consultant</option>
-              <option value="OTHER">Other</option>
-              {/* Add more options as needed */}
-            </select>
+            <Select
+              defaultValue="Select Type"
+              options={[
+                { value: 'CONSTRUCTION_COMPANY', label: 'Construction Company' },
+                { value: 'PROPERTY_MANAGER', label: 'Property Manager' },
+                { value: 'REAL_ESTATE_AGENCY', label: 'Real Estate Agency' },
+                { value: 'SUPPLIER', label: 'Supplier' },
+                { value: 'CONTRACTOR', label: 'Contractor' },
+                { value: 'CONSULTANT', label: 'Consultant' },
+                { value: 'OTHER', label: 'Other' },
+              ]}
+            />
           </Form.Item>
 
           <Form.Item
@@ -132,7 +146,7 @@ export default function OrganisationList(memmbershipsData: MembershipDetailsDTO[
             name="street"
             rules={[{ required: true, message: 'Please input the street address!' }]}
           >
-            <input />
+            <Input />
           </Form.Item>
 
           <Form.Item
@@ -140,7 +154,7 @@ export default function OrganisationList(memmbershipsData: MembershipDetailsDTO[
             name="area"
             rules={[{ required: true, message: 'Please input the area!' }]}
           >
-            <input />
+            <Input />
           </Form.Item>
 
           <Form.Item
@@ -148,7 +162,7 @@ export default function OrganisationList(memmbershipsData: MembershipDetailsDTO[
             name="city"
             rules={[{ required: true, message: 'Please input the city!' }]}
           >
-            <input />
+            <Input />
           </Form.Item>
 
           <Form.Item
@@ -156,7 +170,7 @@ export default function OrganisationList(memmbershipsData: MembershipDetailsDTO[
             name="region"
             rules={[{ required: true, message: 'Please input the region!' }]}
           >
-            <input />
+            <Input />
           </Form.Item>
 
           <Form.Item
@@ -164,10 +178,12 @@ export default function OrganisationList(memmbershipsData: MembershipDetailsDTO[
             name="country"
             rules={[{ required: true, message: 'Please input the country!' }]}
           >
-            <input />
+            <Input />
           </Form.Item>
 
-          <Form.Item>
+          <Form.Item
+            label={null}
+          >
             <Button type="primary" htmlType="submit">
               Create Organisation <RightOutlined />
             </Button>
