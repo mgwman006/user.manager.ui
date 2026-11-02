@@ -1,3 +1,5 @@
+import { OrganisationDetailsDTO } from "./organisation";
+
 export type ApiResponse<T> = {
   success: boolean;
   data: T;
@@ -11,7 +13,7 @@ export interface AccountDetailsDto {
   enabled: boolean;
   userDetails: UserDetailsDTO,
   token?: string,
-  organisations?: OrganisationDTO[]
+  organisations?: OrganisationDetailsDTO[]
 }
 
 // types/api.ts
@@ -46,7 +48,7 @@ export type AccountAction =
   | { type: "FETCH_ERROR"; payload: string }
   | { type: "LOGOUT" }
   | { type: "APPEND_USER"; payload: UserDetailsDTO }
-  | { type: "SET_ORGANISATIONS"; payload: OrganisationDTO[] }
+  | { type: "SET_ORGANISATIONS"; payload: OrganisationDetailsDTO[] }
   | { type: "APPEND_JWT"; payload: string }
   | { type: "ADD_OUTGOING_URL"; outGoingUrl : string | null };
 
@@ -95,11 +97,14 @@ export interface UserCreateRequestDto
   phoneNumber: string
 }
 
-export interface OrganisationDTO {
-  id: number;
-  name: string;
-  role?: string;
-  createdAt?: string;
-}
 
+export interface AddressDTO {
+  postalCode: number;
+  streetNumber: number;
+  streetName: string;
+  ward: string;
+  city: string;
+  region: string;
+  country: string;
+}
 
