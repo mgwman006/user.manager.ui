@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { AccountAction, AccountAuthRequestDTO, AccountAuthResponseDTO, AccountCreateDto, AccountDetailsDto, ApiError, ApiResponse, UserCreateRequestDto, UserDetailsDTO, OrganisationDTO, MembershipDetailsDTO } from '../types/types';
+import { AccountAction, AccountAuthRequestDTO, AccountAuthResponseDTO, AccountCreateDto, AccountDetailsDto, ApiError, ApiResponse, UserCreateRequestDto, UserDetailsDTO, MembershipDetailsDTO } from '../types/types';
+import { OrganizationCreateDTO, OrganisationDetailsDTO } from '../types/organisation';
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -76,17 +77,24 @@ export const usersApi = {
 };
 
 export const organisationsApi = {
-  getForUser: async (phoneNumber?: string, token?: string): Promise<OrganisationDTO[]> => {
+  getForUser: async (phoneNumber?: string, token?: string): Promise<OrganisationDetailsDTO[]> => {
     const url = phoneNumber ? `/users/${phoneNumber}/organisations` : `/organisations`;
     const headers: Record<string,string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await apiClient.get<ApiResponse<OrganisationDTO[]>>(url, { headers });
+    const res = await apiClient.get<ApiResponse<OrganisationDetailsDTO[]>>(url, { headers });
     return handleResponse(res.data);
   },
-  create: async (ownerId:number, payload: any, token?: string): Promise<OrganisationDTO> => {
-    const headers: Record<string,string> = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await apiClient.post<ApiResponse<OrganisationDTO>>(`/organisations/${ownerId}`, payload, { headers });
+  create: async (ownerId:number, payload: OrganizationCreateDTO, token?: string): Promise<OrganisationDetailsDTO> => {
+
+    const res = await apiClient.post<ApiResponse<OrganisationDetailsDTO>>(
+      `/organisations/${ownerId}`, 
+      payload, 
+      { 
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
     return handleResponse(res.data);
   }
 };

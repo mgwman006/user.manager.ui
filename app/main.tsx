@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import "./app.css";
 import { AccountProvider } from "./store/account/AccountContext";
 
 const rootElement = document.getElementById("root");

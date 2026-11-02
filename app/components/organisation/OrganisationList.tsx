@@ -1,94 +1,71 @@
-import React, { useEffect, useState } from 'react';
-import { List, Button, Spin, Modal, Form, Input, Select } from 'antd';
+import { useState } from 'react';
+import { List, Button, Modal, Form, Input, Select } from 'antd';
 import { RightOutlined } from '@ant-design/icons';
 import { useAccount } from '../../store/account/AccountContext';
-import { organisationsApi, membershipApi } from '../../api/api';
-import { useNavigate } from 'react-router-dom';
-import { MembershipDetailsDTO, OrganisationDTO } from '../../types/types';
+import { MembershipDetailsDTO } from '../../types/types';
 import { NotificationInstance } from 'antd/es/notification/interface';
+import { OrganizationCreateDTO } from '../../types/organisation';
+import { createOrganisation, getUserMemberships } from '../../services/organisationService';
 
-export default function OrganisationList(membershipsData: MembershipDetailsDTO[], notificationApi: NotificationInstance) {
-  const navigate = useNavigate();
+type OrganisationListProps = {
+  membershipsData: MembershipDetailsDTO[];
+  notificationApi: NotificationInstance;
+};
+
+export default function OrganisationList({ membershipsData, notificationApi }: OrganisationListProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form] = Form.useForm();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [organisationForm] = Form.useForm<OrganizationCreateDTO>();
   const { state } = useAccount();
   const [memberships, setMemberships] = useState<MembershipDetailsDTO[]>(membershipsData);
 
-
-  async function createOrganisation(values: any): Promise<void> {
-    try {
-      const payload = {
-        name: values.name,
-        businessEmail: values.businessEmail,
-        type: values.type,
-        address: {
-          street: values.street,
-          area: values.area,
-          city: values.city,
-          region: values.region,
-          country: values.country,
-        },
-      };
-
-      const response = await organisationsApi.create(state.accountDetails?.userDetails?.id ?? 0, payload, state.accountDetails?.token);
-      loadMemberships();
-      setIsModalOpen(false);
-    } catch (error: any) {
-      setIsModalOpen(false);
-      notificationApi.error({
-        message: 'Unable to create organisation',
-        description: error?.response?.data?.message || 'Please try again.',
-      });
+  async function handleCreateOrganisation(values: OrganizationCreateDTO): Promise<void> {
+    setIsSubmitting(true);
+    const createdOrganisation = await createOrganisation(state.accountDetails,values,notificationApi,);
+    if (!createdOrganisation) {
+      return;
     }
-  }
 
-  async function loadMemberships(): Promise<void> {
-    try {
-      const response = await membershipApi.getByUserId(state.accountDetails?.userDetails?.id ?? 0, state.accountDetails?.token);
-      setMemberships(response);
-    } catch (error: any) {
-      notificationApi.error({
-        message: 'Unable to load memberships',
-        description: error?.response?.data?.message || 'Please try again.',
-      });
+    setIsModalOpen(false);
+    organisationForm.resetFields();
+
+    const updatedMemberships = await getUserMemberships(state.accountDetails, notificationApi);
+    if (updatedMemberships) {
+      setMemberships(updatedMemberships);
     }
+
+    setIsSubmitting(false);
   }
 
 
   return (
-    <div 
-      // /style={{ padding: 24 }}
-    >
+    <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2>Your Organisations</h2>
-        <div>
-          <Button type="primary" onClick={() => setIsModalOpen(true)}>
-            Create New Organisation
-          </Button>
-        </div>
+        <Button type="primary" onClick={() => setIsModalOpen(true)}>
+          Create New Organisation
+        </Button>
       </div>
 
-     
-        <List
-          bordered
-          dataSource={memberships}
-          renderItem={(item) => (
-            <List.Item>
-              <List.Item.Meta
-                title={item.organizationName ? item.organizationName : "Unnamed Organisation"}
-                description={item.membershipRole ? `Role: ${item.membershipRole}` : undefined}
-              />
-            </List.Item>
-          )}
-        />
-      
+      <List
+        bordered
+        dataSource={memberships}
+        renderItem={(item) => (
+          <List.Item>
+            <List.Item.Meta
+              title={item.organizationName || "Unnamed Organisation"}
+              description={item.membershipRole ? `Role: ${item.membershipRole}` : undefined}
+            />
+          </List.Item>
+        )}
+      />
+
       <Modal
         title="Create New Organisation"
         onCancel={() => setIsModalOpen(false)}
-        onOk={() => setIsModalOpen(false)}
         footer={null}
         open={isModalOpen}
-         width={{
+        width={{
           xs: '90%',
           sm: '80%',
           md: '60%',
@@ -98,12 +75,12 @@ export default function OrganisationList(membershipsData: MembershipDetailsDTO[]
         }}
       >
         <Form
-          onFinish={createOrganisation}
-          form={form}
+          onFinish={handleCreateOrganisation}
+          form={organisationForm}
           layout="horizontal"
           size="large"
           labelCol={{ span: 6 }}
-          wrapperCol={{ span: 18}}
+          wrapperCol={{ span: 18 }}
         >
           <Form.Item
             style={{ width: '100%' }}
@@ -142,24 +119,41 @@ export default function OrganisationList(membershipsData: MembershipDetailsDTO[]
           </Form.Item>
 
           <Form.Item
-            label="Street Address"
-            name="street"
-            rules={[{ required: true, message: 'Please input the street address!' }]}
+            label="Postal Code"
+            name={['address', 'postalCode']}
+            rules={[{ required: false, message: 'Please input the postal code!' }]}
           >
             <Input />
           </Form.Item>
 
           <Form.Item
-            label="Area"
-            name="area"
-            rules={[{ required: true, message: 'Please input the area!' }]}
+            label="Street Number"
+            name={['address', 'streetNumber']}
+            rules={[{ required: false, message: 'Please input the street number!' }]}
           >
             <Input />
           </Form.Item>
+
+          <Form.Item
+            label="Street Name"
+            name={['address', 'streetName']}
+            rules={[{ required: true, message: 'Please input the street name!' }]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            label="Ward"
+            name={['address', 'ward']}
+            rules={[{ required: true, message: 'Please input the ward!' }]}
+          >
+            <Input />
+          </Form.Item>
+
 
           <Form.Item
             label="City"
-            name="city"
+            name={['address', 'city']}
             rules={[{ required: true, message: 'Please input the city!' }]}
           >
             <Input />
@@ -167,7 +161,7 @@ export default function OrganisationList(membershipsData: MembershipDetailsDTO[]
 
           <Form.Item
             label="Region"
-            name="region"
+            name={['address', 'region']}
             rules={[{ required: true, message: 'Please input the region!' }]}
           >
             <Input />
@@ -175,7 +169,7 @@ export default function OrganisationList(membershipsData: MembershipDetailsDTO[]
 
           <Form.Item
             label="Country"
-            name="country"
+            name={['address', 'country']}
             rules={[{ required: true, message: 'Please input the country!' }]}
           >
             <Input />
@@ -184,7 +178,7 @@ export default function OrganisationList(membershipsData: MembershipDetailsDTO[]
           <Form.Item
             label={null}
           >
-            <Button type="primary" htmlType="submit">
+            <Button type="primary" htmlType="submit" loading={isSubmitting}>
               Create Organisation <RightOutlined />
             </Button>
           </Form.Item>
