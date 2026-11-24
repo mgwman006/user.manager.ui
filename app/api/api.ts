@@ -11,11 +11,25 @@ export const apiClient = axios.create({
   } ,
 });
 
+type UnauthorizedListener = (authorization?: string) => void;
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+export function onUnauthorized(listener: UnauthorizedListener): () => void {
+  unauthorizedListeners.add(listener);
+  return () => { unauthorizedListeners.delete(listener); };
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      const { message, data, statusCode } = error.response.data;
+      if (error.response.status === 401) {
+        const authorization = error.config?.headers?.get?.("Authorization");
+        unauthorizedListeners.forEach((listener) => listener(
+          typeof authorization === "string" ? authorization : undefined,
+        ));
+      }
+      const { message, data, statusCode } = error.response.data ?? {};
 
       return Promise.reject(
         new ApiError({

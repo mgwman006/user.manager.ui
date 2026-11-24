@@ -34,6 +34,23 @@ npm run dev
 
 Your application will be available at `http://localhost:5173`.
 
+### Authentication sessions
+
+The UI checks the JWT expiry when an account is loaded and while the application
+is open. Expired or malformed tokens and API 401 responses clear the local
+session and redirect to the sign-in application. The backend remains responsible
+for validating the token signature.
+
+Set `VITE_AUTH_URL` to the sign-in application URL and
+`VITE_USER_MANAGER_APP_URL` to this application's return URL. Both are required
+for authentication redirects.
+
+Run the session regression tests with:
+
+```bash
+node --test tests/session.test.mjs
+```
+
 ## Building for Production
 
 Create a production build:
