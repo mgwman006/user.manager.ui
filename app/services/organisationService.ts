@@ -44,6 +44,14 @@ export async function createOrganisation(
     return undefined;
   }
 
+  if (!account.token?.trim()) {
+    notificationApi.error({
+      message: "Unable to create organisation",
+      description: "Your sign-in session is missing. Please sign in again.",
+    });
+    return undefined;
+  }
+
   try {
     return await organisationsApi.create(ownerId, organisation, account.token);
   } catch (error: unknown) {

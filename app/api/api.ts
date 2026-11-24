@@ -84,7 +84,10 @@ export const organisationsApi = {
     const res = await apiClient.get<ApiResponse<OrganisationDetailsDTO[]>>(url, { headers });
     return handleResponse(res.data);
   },
-  create: async (ownerId:number, payload: OrganizationCreateDTO, token?: string): Promise<OrganisationDetailsDTO> => {
+  create: async (ownerId:number, payload: OrganizationCreateDTO, token: string): Promise<OrganisationDetailsDTO> => {
+    if (!token?.trim()) {
+      throw new Error("Your sign-in session is missing. Please sign in again.");
+    }
 
     const res = await apiClient.post<ApiResponse<OrganisationDetailsDTO>>(
       `/organisations/${ownerId}`, 
