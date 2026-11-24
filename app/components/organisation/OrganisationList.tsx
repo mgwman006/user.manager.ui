@@ -21,20 +21,22 @@ export default function OrganisationList({ membershipsData, notificationApi }: O
 
   async function handleCreateOrganisation(values: OrganizationCreateDTO): Promise<void> {
     setIsSubmitting(true);
-    const createdOrganisation = await createOrganisation(state.accountDetails,values,notificationApi,);
-    if (!createdOrganisation) {
-      return;
+    try {
+      const createdOrganisation = await createOrganisation(state.accountDetails, values, notificationApi);
+      if (!createdOrganisation) {
+        return;
+      }
+
+      setIsModalOpen(false);
+      organisationForm.resetFields();
+
+      const updatedMemberships = await getUserMemberships(state.accountDetails, notificationApi);
+      if (updatedMemberships) {
+        setMemberships(updatedMemberships);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsModalOpen(false);
-    organisationForm.resetFields();
-
-    const updatedMemberships = await getUserMemberships(state.accountDetails, notificationApi);
-    if (updatedMemberships) {
-      setMemberships(updatedMemberships);
-    }
-
-    setIsSubmitting(false);
   }
 
 
