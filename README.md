@@ -45,10 +45,18 @@ Set `VITE_AUTH_URL` to the sign-in application URL and
 `VITE_USER_MANAGER_APP_URL` to this application's return URL. Both are required
 for authentication redirects.
 
-Run the session regression tests with:
+On the Organisations page, owners and admins can invite a user by phone number
+and assign an admin or member role. Invitations default to member; accepting
+one creates a membership. The backend enforces access and prevents duplicates.
+Members can view their organisation's member names and roles.
+The Invitations page lists invitations for the signed-in user and supports
+accepting or declining them. The backend only lists pending invitations, so
+completed responses remain visible only until the page is refreshed or left.
+
+Run the membership regression tests with:
 
 ```bash
-node --test tests/session.test.mjs
+node --test tests/membership.test.mjs
 ```
 
 ## Building for Production

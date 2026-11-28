@@ -48,6 +48,7 @@ export type AccountAction =
   | { type: "FETCH_ERROR"; payload: string }
   | { type: "LOGOUT" }
   | { type: "APPEND_USER"; payload: UserDetailsDTO }
+  | { type: "SET_MEMBERSHIPS"; payload: MembershipDetailsDTO[] }
   | { type: "SET_ORGANISATIONS"; payload: OrganisationDetailsDTO[] }
   | { type: "APPEND_JWT"; payload: string }
   | { type: "ADD_OUTGOING_URL"; outGoingUrl : string | null };
@@ -84,10 +85,29 @@ export interface UserDetailsDTO
 export interface MembershipDetailsDTO
 {
   id:number;
-  userId:number,
+  userId:number | null,
+  userFirstName:string | null,
+  userLastName:string | null,
   organizationId:number,
   organizationName:string,
-  membershipRole:string
+  membershipRole:OrganisationMembershipRole
+}
+
+export type OrganisationMembershipRole = "OWNER" | "ADMIN" | "MEMBER";
+
+export interface InvitationCreateRequestDTO {
+  adminUserId: number;
+  phoneNumber: string;
+  role: OrganisationMembershipRole;
+}
+
+export interface InvitationDetailsDTO {
+  id: number;
+  organizationId: number;
+  organizationName: string;
+  invitedPhoneNumber: string;
+  role: OrganisationMembershipRole;
+  status: "PENDING" | "ACCEPTED" | "DECLINED";
 }
 
 export interface UserCreateRequestDto

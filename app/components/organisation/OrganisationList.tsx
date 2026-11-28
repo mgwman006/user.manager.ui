@@ -1,23 +1,32 @@
 import { useState } from 'react';
-import { List, Button, Modal, Form, Input, Select } from 'antd';
-import { RightOutlined } from '@ant-design/icons';
+import { Alert, Button, Collapse, Flex, Form, Input, Modal, Result, Select, Spin, Tag, Typography } from 'antd';
+import { PlusOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons';
 import { useAccount } from '../../store/account/AccountContext';
-import { MembershipDetailsDTO } from '../../types/types';
+import { InvitationCreateRequestDTO, MembershipDetailsDTO } from '../../types/types';
 import { NotificationInstance } from 'antd/es/notification/interface';
 import { OrganizationCreateDTO } from '../../types/organisation';
-import { createOrganisation, getUserMemberships } from '../../services/organisationService';
+import { createOrganisation, getUserMemberships, inviteOrganisationMember } from '../../services/organisationService';
+import OrganisationMembers from './OrganisationMembers';
 
 type OrganisationListProps = {
   membershipsData: MembershipDetailsDTO[];
   notificationApi: NotificationInstance;
+  loading: boolean;
+  loadFailed: boolean;
+  onRefresh: () => void;
 };
 
-export default function OrganisationList({ membershipsData, notificationApi }: OrganisationListProps) {
+const { Text } = Typography;
+
+export default function OrganisationList({ membershipsData, notificationApi, loading, loadFailed, onRefresh }: OrganisationListProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedOrganisation, setSelectedOrganisation] = useState<MembershipDetailsDTO | null>(null);
+  const [openOrganisations, setOpenOrganisations] = useState<string[]>([]);
+  const [isAddingMember, setIsAddingMember] = useState(false);
   const [organisationForm] = Form.useForm<OrganizationCreateDTO>();
-  const { state } = useAccount();
-  const [memberships, setMemberships] = useState<MembershipDetailsDTO[]>(membershipsData);
+  const [membershipForm] = Form.useForm<Omit<InvitationCreateRequestDTO, "adminUserId">>();
+  const { state, dispatch } = useAccount();
 
   async function handleCreateOrganisation(values: OrganizationCreateDTO): Promise<void> {
     setIsSubmitting(true);
@@ -32,35 +41,123 @@ export default function OrganisationList({ membershipsData, notificationApi }: O
 
       const updatedMemberships = await getUserMemberships(state.accountDetails, notificationApi);
       if (updatedMemberships) {
-        setMemberships(updatedMemberships);
+        dispatch({ type: "SET_MEMBERSHIPS", payload: updatedMemberships });
       }
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  async function handleAddMember(values: Omit<InvitationCreateRequestDTO, "adminUserId">): Promise<void> {
+    if (!selectedOrganisation) {
+      return;
+    }
+    setIsAddingMember(true);
+    try {
+      const invitation = await inviteOrganisationMember(
+        state.accountDetails, selectedOrganisation.organizationId, values, notificationApi,
+      );
+      if (invitation) {
+        notificationApi.success({
+          message: "Invitation sent",
+          description: `An invitation was sent to join ${selectedOrganisation.organizationName}.`,
+        });
+        setSelectedOrganisation(null);
+        membershipForm.resetFields();
+      }
+    } finally {
+      setIsAddingMember(false);
+    }
+  }
+
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <Flex justify="space-between" align="center" wrap="wrap" gap="middle" style={{ marginBottom: 16 }}>
         <h2>Your Organisations</h2>
-        <Button type="primary" onClick={() => setIsModalOpen(true)}>
-          Create New Organisation
-        </Button>
-      </div>
+        <Flex gap="small">
+          <Button icon={<ReloadOutlined />} onClick={onRefresh} disabled={loading}>Refresh</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+            Create New Organisation
+          </Button>
+        </Flex>
+      </Flex>
 
-      <List
-        bordered
-        dataSource={memberships}
-        renderItem={(item) => (
-          <List.Item>
-            <List.Item.Meta
-              title={item.organizationName || "Unnamed Organisation"}
-              description={item.membershipRole ? `Role: ${item.membershipRole}` : undefined}
-            />
-          </List.Item>
-        )}
-      />
+      {loading ? (
+        <Flex justify="center" style={{ padding: 40 }}><Spin size="large" /></Flex>
+      ) : loadFailed ? (
+        <Alert type="error" message="Unable to load organisations" action={<Button onClick={onRefresh}>Retry</Button>} />
+      ) : membershipsData.length === 0 ? (
+        <Result
+          status="info"
+          title="No organisations yet"
+          subTitle="Create an organisation to start managing its members."
+          extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>Create Organisation</Button>}
+        />
+      ) : (
+        <Flex vertical gap="middle">
+          <div><Tag>{membershipsData.length} {membershipsData.length === 1 ? "organisation" : "organisations"}</Tag></div>
+          <Collapse
+            activeKey={openOrganisations}
+            onChange={(keys) => setOpenOrganisations(keys)}
+            items={membershipsData.map((item) => ({
+              key: String(item.organizationId),
+              label: (
+                <Flex justify="space-between" align="center" wrap="wrap" gap="small">
+                  <Text strong>{item.organizationName || "Unnamed Organisation"}</Text>
+                  {item.membershipRole && <Tag>Role: {item.membershipRole}</Tag>}
+                </Flex>
+              ),
+              children: openOrganisations.includes(String(item.organizationId)) ? (
+                <Flex vertical gap="middle">
+                  <Flex justify="space-between" align="center" wrap="wrap" gap="small">
+                    <Text strong>Members</Text>
+                    {(item.membershipRole === "OWNER" || item.membershipRole === "ADMIN") && (
+                      <Button icon={<PlusOutlined />} onClick={() => setSelectedOrganisation(item)}>Add member</Button>
+                    )}
+                  </Flex>
+                  <OrganisationMembers
+                    key={item.organizationId}
+                    organisationId={item.organizationId}
+                    token={state.accountDetails?.token}
+                    notificationApi={notificationApi}
+                  />
+                </Flex>
+              ) : null,
+            }))}
+          />
+        </Flex>
+      )}
+
+      <Modal
+        title={`Invite member to ${selectedOrganisation?.organizationName ?? "organisation"}`}
+        open={selectedOrganisation !== null}
+        onCancel={() => { setSelectedOrganisation(null); membershipForm.resetFields(); }}
+        closable={!isAddingMember}
+        maskClosable={!isAddingMember}
+        keyboard={!isAddingMember}
+        footer={null}
+      >
+        <Form form={membershipForm} layout="vertical" onFinish={handleAddMember} initialValues={{ role: "MEMBER" }}>
+          <Form.Item
+            label="Invitee's phone number"
+            name="phoneNumber"
+            rules={[
+              { required: true, message: "Please enter the user's phone number." },
+              { pattern: /^(?:0[0-9]{9}|\+?255[0-9]{9})$/, message: "Enter a valid Tanzanian phone number." },
+            ]}
+          >
+            <Input placeholder="0712345678" />
+          </Form.Item>
+          <Form.Item name="role" label="Role">
+            <Select options={[
+              { value: "MEMBER", label: "Member" },
+              { value: "ADMIN", label: "Admin" },
+            ]} />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" loading={isAddingMember}>Send invitation</Button>
+        </Form>
+      </Modal>
 
       <Modal
         title="Create New Organisation"

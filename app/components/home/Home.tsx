@@ -11,6 +11,7 @@ import {
 import {
   BankOutlined,
   HomeOutlined,
+  MailOutlined,
   SettingOutlined,
   UserOutlined,
 } from "@ant-design/icons";
@@ -115,6 +116,7 @@ export default function Home() {
             { key: "/", icon: <HomeOutlined />, label: "Home" },
             { key: "/profile", icon: <UserOutlined />, label: "User Profile" },
             { key: "/organisations", icon: <BankOutlined />, label: "Organisations" },
+            { key: "/invitations", icon: <MailOutlined />, label: "Invitations" },
             { key: "/settings", icon: <SettingOutlined />, label: "Settings" },
           ]}
         />
