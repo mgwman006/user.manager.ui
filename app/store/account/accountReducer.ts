@@ -32,6 +32,17 @@ export const accountReducer = (state: AccountState, action: AccountAction): Acco
           organisations: action.payload
         } as AccountDetailsDto
       };
+    case "SET_MEMBERSHIPS":
+      if (!state.accountDetails?.userDetails) {
+        return state;
+      }
+      return {
+        ...state,
+        accountDetails: {
+          ...state.accountDetails,
+          userDetails: { ...state.accountDetails.userDetails, memberships: action.payload },
+        },
+      };
     case "ADD_OUTGOING_URL":
       return { 
         ...state, 

@@ -34,6 +34,31 @@ npm run dev
 
 Your application will be available at `http://localhost:5173`.
 
+### Authentication sessions
+
+The UI checks the JWT expiry when an account is loaded and while the application
+is open. Expired or malformed tokens and API 401 responses clear the local
+session and redirect to the sign-in application. The backend remains responsible
+for validating the token signature.
+
+Set `VITE_AUTH_URL` to the sign-in application URL and
+`VITE_USER_MANAGER_APP_URL` to this application's return URL. Both are required
+for authentication redirects.
+
+On the Organisations page, owners and admins can invite a user by phone number
+and assign an admin or member role. Invitations default to member; accepting
+one creates a membership. The backend enforces access and prevents duplicates.
+Members can view their organisation's member names and roles.
+The Invitations page lists invitations for the signed-in user and supports
+accepting or declining them. The backend only lists pending invitations, so
+completed responses remain visible only until the page is refreshed or left.
+
+Run the membership regression tests with:
+
+```bash
+node --test tests/membership.test.mjs
+```
+
 ## Building for Production
 
 Create a production build:

@@ -5,80 +5,39 @@ import {
   Image,
   Layout,
   Menu,
-  notification,
   Spin,
   Typography,
 } from "antd";
 import {
   BankOutlined,
   HomeOutlined,
+  MailOutlined,
   SettingOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import { AccountState } from "../../types/types";
 import { useAccount } from "../../store/account/AccountContext";
+import { getTokenExpiration, isTokenExpired } from "../../utilities/token";
 
 const { Content, Header, Sider } = Layout;
 const { Text } = Typography;
-const authUrl = import.meta.env.VITE_AUTH_URL?.trim();
-const userManagerUrl = import.meta.env.VITE_USER_MANAGER_APP_URL?.trim();
-
-function isTokenExpired(token?: string): boolean {
-  if (!token) {
-    return true;
-  }
-
-  try {
-    const parts = token.split(".");
-    if (parts.length < 2) {
-      return true;
-    }
-
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-    return typeof payload?.exp !== "number" || Date.now() >= payload.exp * 1000;
-  } catch (error) {
-    console.error("Failed to decode JWT", error);
-    return true;
-  }
-}
-
 export default function Home() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const [notificationApi, contextHolder] = notification.useNotification();
-  const { state, dispatch } = useAccount();
+  const { state, dispatch, requireAuthentication } = useAccount();
   const accountStateString = searchParams.get("state");
   const accountDetails = state.accountDetails;
   const userDetails = accountDetails?.userDetails;
 
   useEffect(() => {
-    const navigateToAuth = () => {
-      if (!authUrl || !userManagerUrl) {
-        console.error("Authentication redirect URLs are not configured.");
-        return;
-      }
-
-      window.location.href = `${authUrl}?outGoingUrl=${encodeURIComponent(userManagerUrl)}&phoneNumber=${encodeURIComponent("")}`;
-    };
-
     if (!accountStateString) {
       if (!accountDetails) {
-        navigateToAuth();
+        requireAuthentication();
       } else if (isTokenExpired(accountDetails.token)) {
-        notificationApi.error({
-          message: "Session expired",
-          description: "Your sign-in session has expired. Please sign in again.",
-        });
-        dispatch({ type: "LOGOUT" });
-        navigateToAuth();
+        requireAuthentication("Your sign-in session has expired. Please sign in again.");
       } else if (!accountDetails.userDetails?.firstName?.trim() || !accountDetails.userDetails?.lastName?.trim()) {
-        notificationApi.error({
-          message: "User details missing",
-          description: "Your sign-in state is incomplete. Please sign in again.",
-        });
-        dispatch({ type: "LOGOUT" });
-        navigateToAuth();
+        requireAuthentication("Your sign-in state is incomplete. Please sign in again.");
       }
       return;
     }
@@ -92,44 +51,58 @@ export default function Home() {
       }
 
       if (isTokenExpired(details.token)) {
-        notificationApi.error({
-          message: "Session expired",
-          description: "Your sign-in session has expired. Please sign in again.",
-        });
-        dispatch({ type: "LOGOUT" });
-        navigateToAuth();
+        requireAuthentication("Your sign-in session has expired. Please sign in again.");
         return;
       }
 
       if (!details.userDetails?.firstName?.trim() || !details.userDetails?.lastName?.trim()) {
-        notificationApi.error({
-          message: "User details missing",
-          description: "Your sign-in state is incomplete. Please sign in again.",
-        });
-        dispatch({ type: "LOGOUT" });
-        navigateToAuth();
+        requireAuthentication("Your sign-in state is incomplete. Please sign in again.");
         return;
       }
 
       if (!accountDetails || accountDetails.token !== details.token || !accountDetails.userDetails) {
         dispatch({ type: "FETCH_SUCCESS", payload: details });
       }
+      const remainingParams = new URLSearchParams(searchParams);
+      remainingParams.delete("state");
+      const search = remainingParams.toString();
+      navigate({ pathname: location.pathname, search: search ? `?${search}` : "", hash: location.hash }, { replace: true });
     } catch (error) {
       console.error("Failed to parse account state from URL", error);
-      notificationApi.error({
-        message: "Unable to sign in",
-        description: "The sign-in response was invalid. Please try again.",
-      });
-      dispatch({ type: "LOGOUT" });
-      navigateToAuth();
+      requireAuthentication("The sign-in response was invalid. Please try again.");
     }
-  }, [accountStateString, accountDetails, dispatch, notificationApi]);
+  }, [accountStateString, accountDetails, dispatch, requireAuthentication, navigate, location.pathname, location.hash, searchParams]);
+
+  useEffect(() => {
+    if (accountStateString || !accountDetails?.token) {
+      return;
+    }
+
+    let timer: ReturnType<typeof setTimeout>;
+    const checkExpiration = () => {
+      clearTimeout(timer);
+      const expiration = getTokenExpiration(accountDetails.token);
+      if (expiration === undefined || Date.now() >= expiration) {
+        requireAuthentication("Your sign-in session has expired. Please sign in again.");
+        return;
+      }
+      timer = setTimeout(checkExpiration, Math.min(expiration - Date.now(), 2_147_483_647));
+    };
+
+    checkExpiration();
+    window.addEventListener("focus", checkExpiration);
+    document.addEventListener("visibilitychange", checkExpiration);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", checkExpiration);
+      document.removeEventListener("visibilitychange", checkExpiration);
+    };
+  }, [accountStateString, accountDetails?.token, requireAuthentication]);
 
   const selectedKey = location.pathname === "/" ? "/" : location.pathname;
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      {contextHolder}
       <Sider breakpoint="lg" collapsedWidth="0" theme="dark">
         <div className="dashboard-brand">
           <Image preview={false} src="/tante-logo.svg" width={100} height={30} />
@@ -143,6 +116,7 @@ export default function Home() {
             { key: "/", icon: <HomeOutlined />, label: "Home" },
             { key: "/profile", icon: <UserOutlined />, label: "User Profile" },
             { key: "/organisations", icon: <BankOutlined />, label: "Organisations" },
+            { key: "/invitations", icon: <MailOutlined />, label: "Invitations" },
             { key: "/settings", icon: <SettingOutlined />, label: "Settings" },
           ]}
         />
@@ -158,7 +132,7 @@ export default function Home() {
           </div>
         </Header>
         <Content className="dashboard-content">
-          {accountDetails ? <Outlet /> : <div className="dashboard-loading"><Spin size="large" /></div>}
+          {accountDetails && !accountStateString && !isTokenExpired(accountDetails.token) ? <Outlet /> : <div className="dashboard-loading"><Spin size="large" /></div>}
         </Content>
       </Layout>
     </Layout>

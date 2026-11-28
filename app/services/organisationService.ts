@@ -1,7 +1,7 @@
 import { NotificationInstance } from "antd/es/notification/interface";
-import { membershipApi, organisationsApi } from "../api/api";
+import { invitationApi, membershipApi, organisationsApi } from "../api/api";
 import { OrganizationCreateDTO, OrganisationDetailsDTO } from "../types/organisation";
-import { AccountDetailsDto, ApiError, MembershipDetailsDTO } from "../types/types";
+import { AccountDetailsDto, ApiError, InvitationCreateRequestDTO, InvitationDetailsDTO, MembershipDetailsDTO } from "../types/types";
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -81,6 +81,64 @@ export async function getUserMemberships(
   } catch (error: unknown) {
     notificationApi.error({
       message: "Unable to load memberships",
+      description: getErrorMessage(error),
+    });
+    return undefined;
+  }
+}
+
+export async function inviteOrganisationMember(
+  account: AccountDetailsDto | null,
+  organisationId: number,
+  request: Omit<InvitationCreateRequestDTO, "adminUserId">,
+  notificationApi: NotificationInstance,
+): Promise<InvitationDetailsDTO | undefined> {
+  if (!account?.token?.trim()) {
+    notificationApi.error({
+      message: "Unable to send invitation",
+      description: "Your sign-in session is missing. Please sign in again.",
+    });
+    return undefined;
+  }
+
+  const adminUserId = account.userDetails?.id;
+  if (adminUserId === undefined || !Number.isSafeInteger(adminUserId) || adminUserId <= 0) {
+    notificationApi.error({
+      message: "Unable to send invitation",
+      description: "Your user details are not available. Please sign in again.",
+    });
+    return undefined;
+  }
+
+  try {
+    return await invitationApi.create(organisationId, { ...request, adminUserId }, account.token);
+  } catch (error: unknown) {
+    notificationApi.error({
+      message: "Unable to send invitation",
+      description: getErrorMessage(error),
+    });
+    return undefined;
+  }
+}
+
+export async function getOrganisationMembers(
+  token: string | undefined,
+  organisationId: number,
+  notificationApi: NotificationInstance,
+): Promise<MembershipDetailsDTO[] | undefined> {
+  if (!token?.trim()) {
+    notificationApi.error({
+      message: "Unable to load members",
+      description: "Your sign-in session is missing. Please sign in again.",
+    });
+    return undefined;
+  }
+
+  try {
+    return await membershipApi.getForOrganisation(organisationId, token);
+  } catch (error: unknown) {
+    notificationApi.error({
+      message: "Unable to load members",
       description: getErrorMessage(error),
     });
     return undefined;

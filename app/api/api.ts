@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AccountAction, AccountAuthRequestDTO, AccountAuthResponseDTO, AccountCreateDto, AccountDetailsDto, ApiError, ApiResponse, UserCreateRequestDto, UserDetailsDTO, MembershipDetailsDTO } from '../types/types';
+import { AccountAuthRequestDTO, AccountAuthResponseDTO, AccountCreateDto, AccountDetailsDto, ApiError, ApiResponse, UserCreateRequestDto, UserDetailsDTO, MembershipDetailsDTO, InvitationCreateRequestDTO, InvitationDetailsDTO } from '../types/types';
 import { OrganizationCreateDTO, OrganisationDetailsDTO } from '../types/organisation';
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -11,11 +11,25 @@ export const apiClient = axios.create({
   } ,
 });
 
+type UnauthorizedListener = (authorization?: string) => void;
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+export function onUnauthorized(listener: UnauthorizedListener): () => void {
+  unauthorizedListeners.add(listener);
+  return () => { unauthorizedListeners.delete(listener); };
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      const { message, data, statusCode } = error.response.data;
+      if (error.response.status === 401) {
+        const authorization = error.config?.headers?.get?.("Authorization");
+        unauthorizedListeners.forEach((listener) => listener(
+          typeof authorization === "string" ? authorization : undefined,
+        ));
+      }
+      const { message, data, statusCode } = error.response.data ?? {};
 
       return Promise.reject(
         new ApiError({
@@ -103,6 +117,13 @@ export const organisationsApi = {
 };
 
 export const membershipApi = {
+  getForOrganisation: async (organizationId: number, token: string): Promise<MembershipDetailsDTO[]> => {
+    const res = await apiClient.get<ApiResponse<MembershipDetailsDTO[]>>(
+      `/memberships/organisations/${organizationId}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    return handleResponse(res.data);
+  },
   getByUserId: async (userId: number, token?: string) => {
     const res = await apiClient.get<ApiResponse<MembershipDetailsDTO[]>>(`/memberships/${userId}`, 
       { 
@@ -112,6 +133,40 @@ export const membershipApi = {
       });
     return handleResponse(res.data);
   }
+};
+
+export const invitationApi = {
+  create: async (organizationId: number, request: InvitationCreateRequestDTO, token: string): Promise<InvitationDetailsDTO> => {
+    const res = await apiClient.post<ApiResponse<InvitationDetailsDTO>>(
+      `/invitations/organisations/${organizationId}`,
+      request,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    return handleResponse(res.data);
+  },
+  getPending: async (token: string): Promise<InvitationDetailsDTO[]> => {
+    const res = await apiClient.get<ApiResponse<InvitationDetailsDTO[]>>(
+      "/invitations/pending",
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    return handleResponse(res.data);
+  },
+  accept: async (invitationId: number, token: string): Promise<InvitationDetailsDTO> => {
+    const res = await apiClient.post<ApiResponse<InvitationDetailsDTO>>(
+      `/invitations/${invitationId}/accept`,
+      undefined,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    return handleResponse(res.data);
+  },
+  decline: async (invitationId: number, token: string): Promise<void> => {
+    const res = await apiClient.post<ApiResponse<void>>(
+      `/invitations/${invitationId}/decline`,
+      undefined,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    return handleResponse(res.data);
+  },
 };
 
 export function handleResponse<T>(response: ApiResponse<T>): T {
